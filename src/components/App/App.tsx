@@ -1,85 +1,63 @@
-import { useState, useEffect } from "react";
-import { Toaster } from "react-hot-toast";
-import toast from "react-hot-toast";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import ReactPaginate from "react-paginate";
-
-import SearchBar from "../SearchBar/SearchBar";
-import MovieGrid from "../MovieGrid/MovieGrid";
-import Loader from "../Loader/Loader";
-import ErrorMessage from "../ErrorMessage/ErrorMessage";
-import MovieModal from "../MovieModal/MovieModal";
-
-import { type Movie } from "../../types/movie";
-import { fetchMovies, type TmdbResponse } from "../../services/movieService";
+import { useState } from "react";
+import { useNotes, useDeleteNote } from "../../services/noteService";
+import NoteList from "../NoteList/NoteList";
+import NoteForm from "../NoteForm/NoteForm";
+import Modal from "../Modal/Modal";
+import SearchBox from "../SearchBox/SearchBox";
+import Pagination from "../Pagination/Pagination";
 import css from "./App.module.css";
 
 export default function App() {
-  const [query, setQuery] = useState("");
-  const [page, setPage] = useState(1);
-  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [searchText, setSearchText] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { data, isLoading, isError, isSuccess } = useQuery<TmdbResponse, Error>(
-    {
-      queryKey: ["movies", query, page],
-      queryFn: () => fetchMovies(query, page),
-      enabled: !!query,
-      placeholderData: keepPreviousData,
-    }
-  );
+  const { data, isLoading, isError } = useNotes(searchText, currentPage);
+  const deleteNoteMutation = useDeleteNote();
 
-  const movies = data?.results ?? [];
-
-  const handleSearch = (newQuery: string) => {
-    setQuery(newQuery);
-    setPage(1);
+  const handleDelete = (id: string) => {
+    deleteNoteMutation.mutate(id);
   };
 
-  const handleSelect = (movie: Movie) => {
-    setSelectedMovie(movie);
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
-
-  const handleCloseModal = () => {
-    setSelectedMovie(null);
-  };
-
-  useEffect(() => {
-    if (isSuccess && query && movies.length === 0) {
-      toast.error("No movies found for your request.");
-    }
-  }, [isSuccess, query, movies.length]);
 
   return (
-    <div>
-      <SearchBar onSubmit={handleSearch} />
+    <div className={css.app}>
+      <header className={css.toolbar}>
+        <SearchBox value={searchText} onChange={setSearchText} />
 
-      {isLoading && <Loader />}
-      {isError && <ErrorMessage />}
+        {!isLoading && (data?.totalPages ?? 0) > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={data!.totalPages}
+            onPageChange={handlePageChange}
+          />
+        )}
 
-      {movies.length > 0 && (
-        <>
-          <MovieGrid movies={movies} onSelect={handleSelect} />
+        <button
+          className={css.button}
+          onClick={() => setIsModalOpen(true)}
+        >
+          Create note +
+        </button>
+      </header>
 
-          {data && data.total_pages > 1 && (
-            <ReactPaginate
-              pageCount={data.total_pages}
-              pageRangeDisplayed={5}
-              marginPagesDisplayed={1}
-              onPageChange={({ selected }) => setPage(selected + 1)}
-              forcePage={page - 1}
-              containerClassName={css.pagination}
-              activeClassName={css.active}
-              nextLabel="→"
-              previousLabel="←"
-            />
-          )}
-        </>
+      {isLoading && <p>Loading...</p>}
+      {isError && <p>Error loading notes.</p>}
+
+      {!isLoading && (data?.results?.length ?? 0) > 0 ? (
+        <NoteList notes={data!.results} onDelete={handleDelete} />
+      ) : (
+        !isLoading && <p>No notes found.</p>
       )}
 
-      {selectedMovie && (
-        <MovieModal movie={selectedMovie} onClose={handleCloseModal} />
+      {isModalOpen && (
+        <Modal onClose={() => setIsModalOpen(false)}>
+          <NoteForm onClose={() => setIsModalOpen(false)} />
+        </Modal>
       )}
-      <Toaster position="top-right" />
     </div>
   );
 }
