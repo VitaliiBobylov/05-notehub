@@ -36,10 +36,7 @@ export default function App() {
           />
         )}
 
-        <button
-          className={css.button}
-          onClick={() => setIsModalOpen(true)}
-        >
+        <button className={css.button} onClick={() => setIsModalOpen(true)}>
           Create note +
         </button>
       </header>
@@ -47,8 +44,8 @@ export default function App() {
       {isLoading && <p>Loading...</p>}
       {isError && <p>Error loading notes.</p>}
 
-      {!isLoading && (data?.results?.length ?? 0) > 0 ? (
-        <NoteList notes={data!.results} onDelete={handleDelete} />
+      {!isLoading && (data?.notes?.length ?? 0) > 0 ? (
+        <NoteList notes={data!.notes} onDelete={handleDelete} />
       ) : (
         !isLoading && <p>No notes found.</p>
       )}

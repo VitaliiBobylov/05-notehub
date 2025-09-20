@@ -12,7 +12,7 @@ export interface FetchNotesResponse {
   perPage: number;
   total: number;
   totalPages: number;
-  results: Note[];
+  notes: Note[];
 }
 
 export interface CreateNotePayload {
