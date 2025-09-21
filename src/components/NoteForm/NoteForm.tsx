@@ -2,6 +2,7 @@ import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { useCreateNote } from "../../services/noteService";
 import type { CreateNotePayload, Note } from "../../types/note";
+import { useQueryClient } from "@tanstack/react-query";
 import css from "./NoteForm.module.css";
 
 interface NoteFormProps {
@@ -13,14 +14,14 @@ const validationSchema = Yup.object({
     .min(3, "Minimum 3 characters")
     .max(50, "Maximum 50 characters")
     .required("Title is required"),
-  content: Yup.string()
-    .max(500, "Maximum 500 characters"),
+  content: Yup.string().max(500, "Maximum 500 characters"),
   tag: Yup.mixed<Note["tag"]>()
     .oneOf(["Todo", "Work", "Personal", "Meeting", "Shopping"])
     .required("Tag is required"),
 });
 
 export default function NoteForm({ onClose }: NoteFormProps) {
+  const queryClient = useQueryClient();
   const createNoteMutation = useCreateNote();
 
   const initialValues: CreateNotePayload = {
@@ -32,11 +33,12 @@ export default function NoteForm({ onClose }: NoteFormProps) {
   const handleSubmit = (values: CreateNotePayload) => {
     createNoteMutation.mutate(values, {
       onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["notes"] });
         onClose();
       },
       onError: (error) => {
         console.error("Error creating note:", error);
-            },
+      },
     });
   };
 
@@ -63,7 +65,11 @@ export default function NoteForm({ onClose }: NoteFormProps) {
               rows={8}
               className={css.textarea}
             />
-            <ErrorMessage name="content" component="span" className={css.error} />
+            <ErrorMessage
+              name="content"
+              component="span"
+              className={css.error}
+            />
           </div>
 
           <div className={css.formGroup}>
@@ -86,7 +92,11 @@ export default function NoteForm({ onClose }: NoteFormProps) {
             >
               Cancel
             </button>
-            <button type="submit" className={css.submitButton} disabled={isSubmitting}>
+            <button
+              type="submit"
+              className={css.submitButton}
+              disabled={isSubmitting}
+            >
               Create note
             </button>
           </div>

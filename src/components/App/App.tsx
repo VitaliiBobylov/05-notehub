@@ -1,54 +1,63 @@
 import { useState } from "react";
-import { useNotes, useDeleteNote } from "../../services/noteService";
+import { useNotes } from "../../services/noteService";
 import NoteList from "../NoteList/NoteList";
 import NoteForm from "../NoteForm/NoteForm";
 import Modal from "../Modal/Modal";
 import SearchBox from "../SearchBox/SearchBox";
 import Pagination from "../Pagination/Pagination";
+import { useDebounce } from "use-debounce";
 import css from "./App.module.css";
 
 export default function App() {
   const [searchText, setSearchText] = useState("");
+  const [debouncedSearchText] = useDebounce(searchText, 500);
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const { data, isLoading, isError } = useNotes(searchText, currentPage);
-  const deleteNoteMutation = useDeleteNote();
-
-  const handleDelete = (id: string) => {
-    deleteNoteMutation.mutate(id);
-  };
+  const { data, isLoading, isError } = useNotes(
+    debouncedSearchText,
+    currentPage
+  );
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
+  const handleSearchChange = (value: string) => {
+    setSearchText(value);
+    setCurrentPage(1);
+  };
+
   return (
     <div className={css.app}>
       <header className={css.toolbar}>
-        <SearchBox value={searchText} onChange={setSearchText} />
+        <SearchBox value={searchText} onChange={handleSearchChange} />
 
-        {!isLoading && (data?.totalPages ?? 0) > 1 && (
+        {!isLoading && data && data.totalPages > 1 && (
           <Pagination
             currentPage={currentPage}
-            totalPages={data!.totalPages}
+            totalPages={data.totalPages}
             onPageChange={handlePageChange}
           />
         )}
+      </header>
 
+      <main>
+        {isLoading && <p>Loading...</p>}
+        {isError && <p>Error loading notes.</p>}
+
+        {!isLoading && data && data.notes.length > 0 ? (
+          <NoteList notes={data.notes} />
+        ) : (
+          !isLoading && <p>No notes found.</p>
+        )}
+      </main>
+
+      <footer>
         <button className={css.button} onClick={() => setIsModalOpen(true)}>
           Create note +
         </button>
-      </header>
-
-      {isLoading && <p>Loading...</p>}
-      {isError && <p>Error loading notes.</p>}
-
-      {!isLoading && (data?.notes?.length ?? 0) > 0 ? (
-        <NoteList notes={data!.notes} onDelete={handleDelete} />
-      ) : (
-        !isLoading && <p>No notes found.</p>
-      )}
+      </footer>
 
       {isModalOpen && (
         <Modal onClose={() => setIsModalOpen(false)}>
